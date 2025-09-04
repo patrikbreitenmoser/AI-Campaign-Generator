@@ -3,6 +3,7 @@ import { URL } from 'node:url';
 import 'dotenv/config';
 import { handleAnalyze } from './routes/analyze.js';
 import { handleGenerate } from './routes/generate.js';
+import { handleGenerateBatch } from './routes/generate-batch.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
 
@@ -44,6 +45,10 @@ const server = createServer((req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/generate') {
       return handleGenerate(req, res);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/generate-batch') {
+      return handleGenerateBatch(req, res);
     }
 
     // Not found

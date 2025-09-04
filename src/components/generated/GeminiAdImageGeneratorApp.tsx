@@ -71,17 +71,21 @@ export const GeminiAdImageGeneratorApp = () => {
       // Show ideas immediately
       setIsGenerating(false);
 
-      // Generate one image per idea, progressively update UI
-      for (const idea of mapped) {
-        if (controller.signal.aborted) break;
+      // Generate one image per idea in parallel; progressively update UI as each finishes
+      mapped.forEach(async idea => {
+        if (controller.signal.aborted) return;
         try {
-          const img = await generateImage({ title: idea.title, description: idea.description }, uploadedImage, additionalInfo, { signal: controller.signal });
-          setGeneratedIdeas(prev => prev.map(it => it.id === idea.id ? { ...it, images: [img] } : it));
+          const img = await generateImage(
+            { title: idea.title, description: idea.description },
+            uploadedImage,
+            additionalInfo,
+            { signal: controller.signal }
+          );
+          setGeneratedIdeas(prev => prev.map(it => (it.id === idea.id ? { ...it, images: [img] } : it)));
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'AbortError') break;
-          // Keep going for other ideas; optionally surface a generic error
+          // Ignore individual failures to avoid blocking others
         }
-      }
+      });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         // Swallow aborted requests quietly

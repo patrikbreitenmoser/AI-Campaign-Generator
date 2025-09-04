@@ -29,6 +29,70 @@ function readJson(req, limitBytes = 8 * 1024 * 1024) {
   });
 }
 
+export async function generateOne({ title, description, additionalInfo = '', img = null, limit = 1 }) {
+  const hasInputImage = Boolean(img?.mimeType && img?.base64);
+  const prompt = buildGenerationPrompt(
+    { title, description },
+    additionalInfo,
+    { hasInputImage }
+  );
+  const contents = [{ text: prompt }];
+  if (hasInputImage) {
+    contents.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+  }
+
+  async function callModelOnce(responseMimeType = 'image/png') {
+    const response = await genAI.models.generateContent({
+      model: IMAGE_MODEL,
+      contents,
+      generationConfig: { responseMimeType },
+    });
+    const imgs = [];
+    const candidates = response?.candidates || [];
+    for (const c of candidates) {
+      const parts = c?.content?.parts || [];
+      for (const p of parts) {
+        if (p?.inlineData?.data && p?.inlineData?.mimeType) {
+          imgs.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
+        }
+      }
+    }
+    if (!imgs.length && Array.isArray(response?.content?.parts)) {
+      for (const p of response.content.parts) {
+        if (p?.inlineData?.data && p?.inlineData?.mimeType) {
+          imgs.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
+        }
+      }
+    }
+    return imgs;
+  }
+
+  const mimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  const baseDelays = [0, 300, 800];
+  let images = [];
+  for (const mime of mimeTypes) {
+    for (let attempt = 0; attempt < baseDelays.length; attempt++) {
+      try {
+        const jitter = Math.floor(Math.random() * 120);
+        const wait = baseDelays[attempt] + jitter;
+        if (wait > 0) await new Promise(r => setTimeout(r, wait));
+        images = await callModelOnce(mime);
+        if (images.length) break;
+      } catch (_) {
+        // continue to next attempt
+      }
+    }
+    if (images.length) break;
+  }
+
+  const out = images.slice(0, Math.max(1, limit)).map((m, idx) => ({
+    id: uuidv4(),
+    url: `data:${m.mimeType};base64,${m.base64}`,
+    alt: `${title} – variation ${idx + 1}`,
+  }));
+  return out;
+}
+
 export async function handleGenerate(req, res) {
   const contentType = (req.headers['content-type'] || '').split(';')[0];
   if (contentType !== 'application/json') {
@@ -49,86 +113,16 @@ export async function handleGenerate(req, res) {
       return;
     }
 
-    const hasInputImage = Boolean(img?.mimeType && img?.base64);
-    const prompt = buildGenerationPrompt(
-      { title, description },
-      additionalInfo,
-      { hasInputImage }
-    );
-    const contents = [{ text: prompt }];
-    if (img?.mimeType && img?.base64) {
-      contents.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
-    }
+    const images = await generateOne({ title, description, additionalInfo, img, limit: 1 });
 
-    async function callModelOnce(responseMimeType = 'image/png') {
-      const response = await genAI.models.generateContent({
-        model: IMAGE_MODEL,
-        contents,
-        // Request inline image bytes; some models are sensitive to mime type
-        generationConfig: { responseMimeType },
-      });
-      const imgs = [];
-      const candidates = response?.candidates || [];
-      for (const c of candidates) {
-        const parts = c?.content?.parts || [];
-        for (const p of parts) {
-          if (p?.inlineData?.data && p?.inlineData?.mimeType) {
-            imgs.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
-          }
-        }
-      }
-      if (!imgs.length && Array.isArray(response?.content?.parts)) {
-        for (const p of response.content.parts) {
-          if (p?.inlineData?.data && p?.inlineData?.mimeType) {
-            imgs.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
-          }
-        }
-      }
-      return imgs;
-    }
-
-    // Retry strategy: try multiple mime types with backoff + jitter
-    const mimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
-    const baseDelays = [0, 300, 800];
-    let images = [];
-    for (const mime of mimeTypes) {
-      for (let attempt = 0; attempt < baseDelays.length; attempt++) {
-        try {
-          const jitter = Math.floor(Math.random() * 120);
-          const wait = baseDelays[attempt] + jitter;
-          if (wait > 0) await new Promise(r => setTimeout(r, wait));
-          images = await callModelOnce(mime);
-          if (images.length) {
-            // Found images, break out of both loops
-            attempt = baseDelays.length; // escape inner
-            break;
-          }
-        } catch (e) {
-          // Log and continue to next attempt or mime type
-          console.warn('[generate] retry', { mime, attempt: attempt + 1, error: e?.message || String(e) });
-          if (attempt === baseDelays.length - 1) {
-            // move to next mime type
-          }
-        }
-      }
-      if (images.length) break;
-    }
-
-    // Limit to 1 image (minimal iteration)
-    const one = images.slice(0, 1).map((m, idx) => ({
-      id: uuidv4(),
-      url: `data:${m.mimeType};base64,${m.base64}`,
-      alt: `${title} – variation ${idx + 1}`,
-    }));
-
-    if (!one.length) {
+    if (!images.length) {
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: { code: 'UPSTREAM_EMPTY', message: 'No image returned from model' } }));
       return;
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ images: one }));
+    res.end(JSON.stringify({ images }));
   } catch (err) {
     console.error('[generate] error:', err);
     const status = err?.statusCode && Number.isInteger(err.statusCode) ? err.statusCode : 502;

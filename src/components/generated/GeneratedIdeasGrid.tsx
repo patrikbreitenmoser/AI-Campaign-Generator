@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Eye, ImageIcon } from 'lucide-react';
 interface GeneratedImage {
@@ -21,7 +21,7 @@ interface GeneratedIdeasGridProps {
   }, ideaTitle: string) => void;
 }
 const PLACEHOLDER_CARDS = Array.from({
-  length: 6
+  length: 3
 }, (_, i) => ({
   id: `placeholder-${i}`
 }));
@@ -32,7 +32,8 @@ export const GeneratedIdeasGrid = ({
   isLoading,
   onImageClick
 }: GeneratedIdeasGridProps) => {
-  const isGeneratingImages = ideas.length > 0 && ideas.some(i => !i.images || i.images.length === 0);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   // @return
   return <div className="space-y-8">
       {isLoading ? <div className="space-y-8">
@@ -70,7 +71,11 @@ export const GeneratedIdeasGrid = ({
         }} transition={{
           delay: index * 0.1
         }} className="bg-card border border-border rounded-lg overflow-hidden">
-                <div className="aspect-[4/3] bg-muted animate-pulse" />
+                <div className="relative aspect-[4/3] bg-muted animate-pulse">
+                  <motion.div className="absolute inset-0 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                    <div className="w-8 h-8 rounded-full border-2 border-border border-t-primary" />
+                  </motion.div>
+                </div>
                 <div className="p-4 space-y-3">
                   <div className="h-4 bg-muted rounded animate-pulse" />
                   <div className="h-3 bg-muted rounded w-3/4 animate-pulse" />
@@ -114,17 +119,12 @@ export const GeneratedIdeasGrid = ({
                 <span>Sophisticated visuals targeting affluent customers with elegant compositions</span>
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-11">
-                {[1, 2, 3].map(i => <div key={i} className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-1 gap-4 ml-11 max-w-md">
+                {[1].map(i => <div key={i} className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-border rounded-lg overflow-hidden">
                     <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 flex items-center justify-center">
                       <div className="w-8 h-8 bg-white/50 dark:bg-black/20 rounded-lg flex items-center justify-center">
                         <ImageIcon className="w-4 h-4 text-muted-foreground" />
                       </div>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-xs text-muted-foreground">
-                        <span>Variation {i}</span>
-                      </p>
                     </div>
                   </div>)}
               </div>
@@ -144,17 +144,12 @@ export const GeneratedIdeasGrid = ({
                 <span>Optimized for Instagram, Facebook, and TikTok with engaging formats</span>
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-11">
-                {[1, 2, 3].map(i => <div key={i} className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-1 gap-4 ml-11 max-w-md">
+                {[1].map(i => <div key={i} className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-border rounded-lg overflow-hidden">
                     <div className="aspect-[4/3] bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 flex items-center justify-center">
                       <div className="w-8 h-8 bg-white/50 dark:bg-black/20 rounded-lg flex items-center justify-center">
                         <ImageIcon className="w-4 h-4 text-muted-foreground" />
                       </div>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-xs text-muted-foreground">
-                        <span>Variation {i}</span>
-                      </p>
                     </div>
                   </div>)}
               </div>
@@ -174,17 +169,12 @@ export const GeneratedIdeasGrid = ({
                 <span>High-energy campaigns with vibrant colors and action-oriented messaging</span>
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-11">
-                {[1, 2, 3].map(i => <div key={i} className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-1 gap-4 ml-11 max-w-md">
+                {[1].map(i => <div key={i} className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-border rounded-lg overflow-hidden">
                     <div className="aspect-[4/3] bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/20 dark:to-red-900/20 flex items-center justify-center">
                       <div className="w-8 h-8 bg-white/50 dark:bg-black/20 rounded-lg flex items-center justify-center">
                         <ImageIcon className="w-4 h-4 text-muted-foreground" />
                       </div>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-xs text-muted-foreground">
-                        <span>Variation {i}</span>
-                      </p>
                     </div>
                   </div>)}
               </div>
@@ -197,16 +187,6 @@ export const GeneratedIdeasGrid = ({
             </p>
           </div>
         </motion.div> : <div className="space-y-12">
-          {isGeneratingImages && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="text-center py-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary">
-                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                  <Sparkles className="w-4 h-4" />
-                </motion.div>
-                <span className="text-sm font-medium">Generating images…</span>
-              </div>
-            </motion.div>
-          )}
           {ideas.map((idea, ideaIndex) => <motion.div key={idea.id} initial={{
         opacity: 0,
         y: 30
@@ -217,21 +197,46 @@ export const GeneratedIdeasGrid = ({
         delay: ideaIndex * 0.2
       }} className="space-y-6">
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-primary" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground">
+                      <span>{idea.title}</span>
+                    </h3>
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">
-                    <span>{idea.title}</span>
-                  </h3>
+                  <div className="shrink-0">
+                    {!expanded[idea.id] ? (
+                      <button
+                        type="button"
+                        onClick={() => toggle(idea.id)}
+                        className="inline-flex items-center rounded-md border text-[11px] px-2 py-[2px] font-medium hover:bg-muted transition-colors"
+                        style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                      >
+                        Show prompt
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => toggle(idea.id)}
+                        className="inline-flex items-center rounded-md border text-[11px] px-2 py-[2px] font-medium hover:bg-muted transition-colors"
+                        style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                      >
+                        Hide prompt
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <p className="text-muted-foreground ml-11">
-                  <span>{idea.description}</span>
-                </p>
+                {expanded[idea.id] && (
+                  <p className="text-muted-foreground ml-11 text-xs">
+                    <span>{idea.description}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-11">
-                {(idea.images && idea.images.length > 0 ? idea.images : [1, 2, 3]).map((image: any, imageIndex: number) => (
+                {(idea.images && idea.images.length > 0 ? idea.images : [1]).map((image: any, imageIndex: number) => (
                   idea.images && idea.images.length > 0 ?
                   <motion.div key={image.id} initial={{
             opacity: 0,
@@ -265,7 +270,11 @@ export const GeneratedIdeasGrid = ({
                   </motion.div>
                   :
                   <motion.div key={`ph-${imageIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ideaIndex * 0.2 + imageIndex * 0.05 }} className="bg-card border border-border rounded-lg overflow-hidden">
-                    <div className="aspect-[4/3] bg-muted animate-pulse" />
+                    <div className="relative aspect-[4/3] bg-muted animate-pulse">
+                      <motion.div className="absolute inset-0 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                        <div className="w-8 h-8 rounded-full border-2 border-border border-t-primary" />
+                      </motion.div>
+                    </div>
                     <div className="p-4 space-y-3">
                       <div className="h-4 bg-muted rounded animate-pulse" />
                       <div className="h-3 bg-muted rounded w-3/4 animate-pulse" />

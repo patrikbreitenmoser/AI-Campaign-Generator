@@ -55,30 +55,58 @@ export async function handleGenerate(req, res) {
       contents.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
     }
 
-    const response = await genAI.models.generateContent({
-      model: IMAGE_MODEL,
-      contents,
-    });
-
-    // Collect inlineData parts from all candidates
-    const images = [];
-    const candidates = response?.candidates || [];
-    for (const c of candidates) {
-      const parts = c?.content?.parts || [];
-      for (const p of parts) {
-        if (p?.inlineData?.data && p?.inlineData?.mimeType) {
-          images.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
+    async function callModelOnce(responseMimeType = 'image/png') {
+      const response = await genAI.models.generateContent({
+        model: IMAGE_MODEL,
+        contents,
+        // Request inline image bytes; some models are sensitive to mime type
+        generationConfig: { responseMimeType },
+      });
+      const imgs = [];
+      const candidates = response?.candidates || [];
+      for (const c of candidates) {
+        const parts = c?.content?.parts || [];
+        for (const p of parts) {
+          if (p?.inlineData?.data && p?.inlineData?.mimeType) {
+            imgs.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
+          }
         }
       }
+      if (!imgs.length && Array.isArray(response?.content?.parts)) {
+        for (const p of response.content.parts) {
+          if (p?.inlineData?.data && p?.inlineData?.mimeType) {
+            imgs.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
+          }
+        }
+      }
+      return imgs;
     }
 
-    // Fallback: some SDK responses flatten parts at top-level
-    if (!images.length && Array.isArray(response?.content?.parts)) {
-      for (const p of response.content.parts) {
-        if (p?.inlineData?.data && p?.inlineData?.mimeType) {
-          images.push({ mimeType: p.inlineData.mimeType, base64: p.inlineData.data });
+    // Retry strategy: try multiple mime types with backoff + jitter
+    const mimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    const baseDelays = [0, 300, 800];
+    let images = [];
+    for (const mime of mimeTypes) {
+      for (let attempt = 0; attempt < baseDelays.length; attempt++) {
+        try {
+          const jitter = Math.floor(Math.random() * 120);
+          const wait = baseDelays[attempt] + jitter;
+          if (wait > 0) await new Promise(r => setTimeout(r, wait));
+          images = await callModelOnce(mime);
+          if (images.length) {
+            // Found images, break out of both loops
+            attempt = baseDelays.length; // escape inner
+            break;
+          }
+        } catch (e) {
+          // Log and continue to next attempt or mime type
+          console.warn('[generate] retry', { mime, attempt: attempt + 1, error: e?.message || String(e) });
+          if (attempt === baseDelays.length - 1) {
+            // move to next mime type
+          }
         }
       }
+      if (images.length) break;
     }
 
     // Limit to 1 image (minimal iteration)
@@ -103,4 +131,3 @@ export async function handleGenerate(req, res) {
     res.end(JSON.stringify({ error: { code: 'UPSTREAM_ERROR', message: 'Failed to generate image' } }));
   }
 }
-

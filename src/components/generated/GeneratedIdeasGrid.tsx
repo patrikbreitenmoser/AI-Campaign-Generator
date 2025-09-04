@@ -32,6 +32,7 @@ export const GeneratedIdeasGrid = ({
   isLoading,
   onImageClick
 }: GeneratedIdeasGridProps) => {
+  const isGeneratingImages = ideas.length > 0 && ideas.some(i => !i.images || i.images.length === 0);
   // @return
   return <div className="space-y-8">
       {isLoading ? <div className="space-y-8">
@@ -196,6 +197,16 @@ export const GeneratedIdeasGrid = ({
             </p>
           </div>
         </motion.div> : <div className="space-y-12">
+          {isGeneratingImages && (
+            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="text-center py-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary">
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                  <Sparkles className="w-4 h-4" />
+                </motion.div>
+                <span className="text-sm font-medium">Generating images…</span>
+              </div>
+            </motion.div>
+          )}
           {ideas.map((idea, ideaIndex) => <motion.div key={idea.id} initial={{
         opacity: 0,
         y: 30
@@ -220,7 +231,9 @@ export const GeneratedIdeasGrid = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-11">
-                {idea.images.map((image, imageIndex) => <motion.div key={image.id} initial={{
+                {(idea.images && idea.images.length > 0 ? idea.images : [1, 2, 3]).map((image: any, imageIndex: number) => (
+                  idea.images && idea.images.length > 0 ?
+                  <motion.div key={image.id} initial={{
             opacity: 0,
             scale: 0.9
           }} animate={{
@@ -248,13 +261,17 @@ export const GeneratedIdeasGrid = ({
                         </div>
                       </motion.div>
                       
-                      <div className="p-4">
-                        <p className="text-sm text-muted-foreground">
-                          <span>Variation {imageIndex + 1}</span>
-                        </p>
-                      </div>
                     </div>
-                  </motion.div>)}
+                  </motion.div>
+                  :
+                  <motion.div key={`ph-${imageIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ideaIndex * 0.2 + imageIndex * 0.05 }} className="bg-card border border-border rounded-lg overflow-hidden">
+                    <div className="aspect-[4/3] bg-muted animate-pulse" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-muted rounded animate-pulse" />
+                      <div className="h-3 bg-muted rounded w-3/4 animate-pulse" />
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </motion.div>)}
         </div>}

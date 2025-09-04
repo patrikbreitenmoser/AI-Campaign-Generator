@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ImageUploadBox } from './ImageUploadBox';
 import { AdditionalInfoTextarea } from './AdditionalInfoTextarea';
 import { GeneratedIdeasGrid } from './GeneratedIdeasGrid';
 import { HighResImageModal } from './HighResImageModal';
+import { analyzeImage, generateImage } from '@/lib/api';
 interface GeneratedIdea {
   id: string;
   title: string;
@@ -28,8 +29,15 @@ export const GeminiAdImageGeneratorApp = () => {
   const [generatedIdeas, setGeneratedIdeas] = useState<GeneratedIdea[]>([]);
   const [modalImage, setModalImage] = useState<ModalImage | null>(null);
   const [error, setError] = useState<string>('');
-  const handleImageUpload = useCallback((file: File) => {
+  const requestRef = useRef<AbortController | null>(null);
+  const handleImageUpload = useCallback((file: File | null) => {
+    // Cancel any in-flight request when image changes
+    if (requestRef.current) {
+      requestRef.current.abort();
+      requestRef.current = null;
+    }
     setUploadedImage(file);
+    setGeneratedIdeas([]);
     setError('');
   }, []);
   const handleAdditionalInfoChange = useCallback((value: string) => {
@@ -40,53 +48,49 @@ export const GeminiAdImageGeneratorApp = () => {
       setError('Please upload an image first');
       return;
     }
+    // Client-side size check (<= 5MB)
+    if (uploadedImage.size > 5 * 1024 * 1024) {
+      setError('Image exceeds 5MB limit');
+      return;
+    }
     setIsGenerating(true);
     setError('');
+    // Abort previous request if any
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     try {
-      // Simulate API call - in real implementation, this would call your backend
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      // Mock generated ideas data
-      const mockIdeas: GeneratedIdea[] = [{
-        id: '1',
-        title: 'Premium Lifestyle Campaign',
-        description: 'Elegant lifestyle imagery showcasing the product in sophisticated settings',
-        images: [{
-          id: '1-1',
-          url: 'https://picsum.photos/400/300?random=1',
-          alt: 'Premium lifestyle ad variant 1'
-        }, {
-          id: '1-2',
-          url: 'https://picsum.photos/400/300?random=2',
-          alt: 'Premium lifestyle ad variant 2'
-        }, {
-          id: '1-3',
-          url: 'https://picsum.photos/400/300?random=3',
-          alt: 'Premium lifestyle ad variant 3'
-        }]
-      }, {
-        id: '2',
-        title: 'Bold & Dynamic Campaign',
-        description: 'High-energy visuals with vibrant colors and dynamic compositions',
-        images: [{
-          id: '2-1',
-          url: 'https://picsum.photos/400/300?random=4',
-          alt: 'Bold dynamic ad variant 1'
-        }, {
-          id: '2-2',
-          url: 'https://picsum.photos/400/300?random=5',
-          alt: 'Bold dynamic ad variant 2'
-        }, {
-          id: '2-3',
-          url: 'https://picsum.photos/400/300?random=6',
-          alt: 'Bold dynamic ad variant 3'
-        }]
-      }];
-      setGeneratedIdeas(mockIdeas);
-    } catch (err) {
-      setError('Failed to generate ideas. Please try again.');
-    } finally {
+      const ideas = await analyzeImage(uploadedImage, additionalInfo, { signal: controller.signal });
+      const mapped: GeneratedIdea[] = ideas.map(i => ({
+        id: i.id,
+        title: i.title,
+        description: i.description,
+        images: [],
+      }));
+      setGeneratedIdeas(mapped);
+      // Show ideas immediately
       setIsGenerating(false);
+
+      // Generate one image per idea, progressively update UI
+      for (const idea of mapped) {
+        if (controller.signal.aborted) break;
+        try {
+          const img = await generateImage({ title: idea.title, description: idea.description }, uploadedImage, additionalInfo, { signal: controller.signal });
+          setGeneratedIdeas(prev => prev.map(it => it.id === idea.id ? { ...it, images: [img] } : it));
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') break;
+          // Keep going for other ideas; optionally surface a generic error
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // Swallow aborted requests quietly
+        return;
+      }
+      const message = err instanceof Error ? err.message : 'Failed to generate ideas. Please try again.';
+      setError(message);
+    } finally {
+      requestRef.current = null;
     }
   }, [uploadedImage, additionalInfo]);
   const handleImageClick = useCallback((image: {

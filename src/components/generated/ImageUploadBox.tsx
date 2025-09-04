@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 interface ImageUploadBoxProps {
-  onImageUpload: (file: File) => void;
+  onImageUpload: (file: File | null) => void;
   uploadedImage: File | null;
 }
 
@@ -40,6 +40,8 @@ export const ImageUploadBox = ({
       setPreviewUrl(e.target?.result as string);
     };
     reader.readAsDataURL(file);
+    // Allow selecting the same file again later
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }, [onImageUpload]);
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -54,9 +56,7 @@ export const ImageUploadBox = ({
       fileInputRef.current.value = '';
     }
   }, [onImageUpload]);
-  const handleClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  // Clicking is handled by the overlaid <input>; no manual trigger to avoid double-open
 
   // @return
   return <div className="space-y-4">
@@ -95,7 +95,7 @@ export const ImageUploadBox = ({
       scale: 1.01
     }} whileTap={{
       scale: 0.99
-    }} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={handleClick} className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200 ${isDragOver ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-border hover:border-primary/50 hover:bg-accent/50'}`}>
+    }} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200 ${isDragOver ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-border hover:border-primary/50 hover:bg-accent/50'}`}>
           <div className="space-y-4">
             <motion.div animate={isDragOver ? {
           scale: 1.1
@@ -113,7 +113,7 @@ export const ImageUploadBox = ({
                 <span>Drag and drop your image here, or click to browse</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                <span>Supports JPG, PNG, WebP up to 10MB</span>
+                <span>Supports JPG, PNG, WebP up to 5MB</span>
               </p>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { ImageUploadBox } from './ImageUploadBox';
 import { AdditionalInfoTextarea } from './AdditionalInfoTextarea';
 import { IdeasGrid } from '@/components/IdeasGrid';
 import { HighResImageModal } from './HighResImageModal';
-import { analyzeImage, generateImage } from '@/lib/api';
+import { analyzeImage, generateBatch } from '@/lib/api';
 import { Sparkles } from 'lucide-react';
 interface GeneratedIdea {
   id: string;
@@ -72,37 +72,39 @@ export const GeminiAdImageGeneratorApp = () => {
       // Show ideas immediately
       setIsGenerating(false);
 
-      // Generate three diverse images per idea in parallel; update each as it completes
-      mapped.forEach(idea => {
-        [0, 1, 2].forEach(async variantIndex => {
-          if (controller.signal.aborted) return;
-          try {
-            const img = await generateImage(
-              { title: idea.title, description: idea.description },
-              uploadedImage,
-              additionalInfo,
-              { signal: controller.signal, variantIndex }
-            );
-            setGeneratedIdeas(prev =>
-              prev.map(it =>
-                it.id === idea.id
-                  ? {
-                      ...it,
-                      images: (() => {
-                        const arr = it.images ? [...it.images] : [];
-                        // place by variant index for stable order; keep sparse slots to avoid reindexing
-                        arr[variantIndex] = img;
-                        return arr;
-                      })(),
-                    }
-                  : it
-              )
-            );
-          } catch (e) {
-            // Ignore individual failures; others continue
-          }
-        });
-      });
+      // Generate three diverse images per idea using batch endpoint
+      try {
+        const batchItems = mapped.map(idea => ({
+          id: idea.id,
+          title: idea.title,
+          description: idea.description,
+          count: 3, // Generate 3 variants per idea
+        }));
+
+        const batchResults = await generateBatch(
+          batchItems,
+          uploadedImage,
+          additionalInfo,
+          { signal: controller.signal, concurrency: 2 }
+        );
+
+        // Update all ideas with their generated images at once
+        setGeneratedIdeas(prev =>
+          prev.map(idea => {
+            const result = batchResults.find(r => r.id === idea.id);
+            return {
+              ...idea,
+              images: result?.images || [],
+            };
+          })
+        );
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') {
+          return; // Swallow aborted requests quietly
+        }
+        // If batch generation fails, show error but keep the ideas
+        console.error('Batch image generation failed:', e);
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         // Swallow aborted requests quietly

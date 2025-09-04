@@ -136,3 +136,46 @@ export async function generateImages(
   if (!images.length) throw new Error('No images returned');
   return images;
 }
+
+export interface BatchItem {
+  id: string;
+  title: string;
+  description: string;
+  count?: number;
+}
+
+export interface BatchResult {
+  id: string;
+  images: GeneratedImage[];
+  error?: { message: string };
+}
+
+export async function generateBatch(
+  items: BatchItem[],
+  originalFile: File | null,
+  additionalInfo: string,
+  opts?: { signal?: AbortSignal; concurrency?: number }
+): Promise<BatchResult[]> {
+  const payload = {
+    items,
+    additionalInfo,
+    concurrency: opts?.concurrency ?? 2,
+    image: originalFile ? await fileToBase64(originalFile) : null,
+  };
+
+  const res = await fetch(`${API_BASE}/api/generate-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: opts?.signal,
+  });
+
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = (data as ApiError)?.error?.message || 'Request failed';
+    throw new Error(message);
+  }
+
+  const results = (data as { results: BatchResult[] })?.results || [];
+  return results;
+}

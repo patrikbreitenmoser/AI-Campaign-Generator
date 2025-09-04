@@ -1,7 +1,7 @@
 import { Theme, Container } from './types';
 
-const injectedTheme: string = '%INJECTED_THEME%';
-const injectedContainer: string = '%INJECTED_CONTAINER%';
+const injectedTheme = '%INJECTED_THEME%';
+const injectedContainer = '%INJECTED_CONTAINER%';
 
 let theme: Theme = 'light';
 let container: Container = 'none';

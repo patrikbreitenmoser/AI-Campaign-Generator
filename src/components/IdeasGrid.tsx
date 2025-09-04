@@ -120,7 +120,7 @@ export const IdeasGrid: React.FC<IdeasGridProps> = ({ ideas, isLoading, onImageC
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[0, 1, 2].map((i) => (
             <motion.div
-              key={`placeholder-${i}`}
+              key={`placeholder-${['A','B','C'][i]}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
@@ -152,7 +152,7 @@ export const IdeasGrid: React.FC<IdeasGridProps> = ({ ideas, isLoading, onImageC
       <div className="space-y-12">
         {PLACEHOLDER_TITLES.map((title, ideaIndex) => (
           <motion.div
-            key={`ph-idea-${ideaIndex}`}
+            key={`ph-idea-${title}`}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: ideaIndex * 0.1 }}
@@ -174,7 +174,7 @@ export const IdeasGrid: React.FC<IdeasGridProps> = ({ ideas, isLoading, onImageC
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-11">
               {[0, 1, 2].map((slotIndex) => (
                 <motion.div
-                  key={`ph-${slotIndex}`}
+                  key={`ph-${title}-slot-${['A','B','C'][slotIndex]}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: ideaIndex * 0.1 + slotIndex * 0.05 }}

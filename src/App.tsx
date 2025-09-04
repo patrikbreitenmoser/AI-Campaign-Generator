@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { Container, Theme } from './settings/types';
 import { GeminiAdImageGeneratorApp } from './components/generated/GeminiAdImageGeneratorApp';
 
-let theme: Theme = 'light';
+const theme: Theme = 'light';
 // only use 'centered' container for standalone components, never for full page apps or websites.
-let container: Container = 'none';
+const container: Container = 'none';
 
 function App() {
   function setTheme(theme: Theme) {

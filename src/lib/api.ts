@@ -10,7 +10,9 @@ export interface ApiError {
 
 // Default to the local server port; override via VITE_API_BASE when deploying.
 const DEFAULT_BASE = '';
-const API_BASE: string = (import.meta as any)?.env?.VITE_API_BASE || DEFAULT_BASE;
+const API_BASE: string = (
+  (import.meta.env as unknown as { VITE_API_BASE?: string }).VITE_API_BASE ?? DEFAULT_BASE
+);
 
 export async function analyzeImage(
   file: File,
@@ -27,7 +29,7 @@ export async function analyzeImage(
     signal: opts?.signal,
   });
 
-  const data = await res.json().catch(() => null);
+  const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const message = (data as ApiError)?.error?.message || 'Request failed';
     throw new Error(message);
@@ -43,14 +45,21 @@ export interface GeneratedImage {
 }
 
 async function fileToBase64(file: File): Promise<{ mimeType: string; base64: string }> {
-  const dataUrl: string = await new Promise((resolve, reject) => {
+  const dataUrl: string = await new Promise<string>((resolve, reject) => {
     const fr = new FileReader();
     fr.onerror = () => reject(new Error('Failed to read file'));
-    fr.onload = () => resolve(String(fr.result));
+    fr.onload = () => {
+      const result = fr.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Unexpected file reader result'));
+        return;
+      }
+      resolve(result);
+    };
     fr.readAsDataURL(file);
   });
   const [prefix, b64] = dataUrl.split(',', 2);
-  const mimeMatch = prefix.match(/^data:(.*?);base64$/i);
+  const mimeMatch = /^data:(.*?);base64$/i.exec(prefix);
   return { mimeType: mimeMatch ? mimeMatch[1] : file.type || 'image/jpeg', base64: b64 || '' };
 }
 
@@ -75,7 +84,7 @@ export async function generateImage(
     additionalInfo,
   };
   if (opts?.count && opts.count > 0) payload.count = opts.count;
-  if (Number.isInteger(opts?.variantIndex)) payload.variantIndex = opts!.variantIndex as number;
+  if (typeof opts?.variantIndex === 'number') payload.variantIndex = opts.variantIndex;
   if (originalFile) {
     payload.image = await fileToBase64(originalFile);
   }
@@ -86,7 +95,7 @@ export async function generateImage(
     body: JSON.stringify(payload),
     signal: opts?.signal,
   });
-  const data = await res.json().catch(() => null);
+  const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const message = (data as ApiError)?.error?.message || 'Request failed';
     throw new Error(message);
@@ -118,7 +127,7 @@ export async function generateImages(
     body: JSON.stringify(payload),
     signal: opts?.signal,
   });
-  const data = await res.json().catch(() => null);
+  const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const message = (data as ApiError)?.error?.message || 'Request failed';
     throw new Error(message);

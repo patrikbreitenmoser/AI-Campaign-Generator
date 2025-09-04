@@ -59,6 +59,7 @@ export async function handleGenerateBatch(req, res) {
     const items = Array.isArray(body?.items) ? body.items : [];
     const additionalInfo = String(body?.additionalInfo || '').trim();
     const concurrency = Math.max(1, Math.min(3, Number(body?.concurrency) || 3));
+    const defaultCount = Math.max(1, Math.min(3, Number(body?.count) || 1));
     if (!items.length) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: { code: 'BAD_REQUEST', message: 'Missing items[]' } }));
@@ -69,8 +70,9 @@ export async function handleGenerateBatch(req, res) {
       id: String(it?.id || uuidv4()),
       title: String(it?.title || '').trim(),
       description: String(it?.description || '').trim(),
-      // per-item override takes precedence over batch additionalInfo
+      // per-item overrides take precedence
       additionalInfo: String(it?.additionalInfo || additionalInfo || '').trim(),
+      count: Math.max(1, Math.min(3, Number(it?.count || defaultCount || 1))),
       image: it?.image && typeof it.image === 'object' ? it.image : null,
       _index: i,
     }));
@@ -87,13 +89,22 @@ export async function handleGenerateBatch(req, res) {
     const results = await runWithConcurrency(
       normalized,
       async n => {
-        const images = await generateOne({
-          title: n.title,
-          description: n.description,
-          additionalInfo: n.additionalInfo,
-          img: n.image,
-          limit: 1,
-        });
+        const images = n.count > 1
+          ? await import('./generate.js').then(m => m.generateVariants({
+              title: n.title,
+              description: n.description,
+              additionalInfo: n.additionalInfo,
+              img: n.image,
+              count: n.count,
+              concurrency: Math.min(3, n.count),
+            }))
+          : await generateOne({
+              title: n.title,
+              description: n.description,
+              additionalInfo: n.additionalInfo,
+              img: n.image,
+              limit: 1,
+            });
         return { id: n.id, images };
       },
       concurrency
@@ -108,4 +119,3 @@ export async function handleGenerateBatch(req, res) {
     res.end(JSON.stringify({ error: { code: 'UPSTREAM_ERROR', message: 'Failed to generate images' } }));
   }
 }
-

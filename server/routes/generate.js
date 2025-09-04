@@ -29,12 +29,24 @@ function readJson(req, limitBytes = 8 * 1024 * 1024) {
   });
 }
 
-export async function generateOne({ title, description, additionalInfo = '', img = null, limit = 1 }) {
+function getVariantDirective(index = 0) {
+  const variants = [
+    // Variant A: medium shot, soft natural light, modern indoor
+    'Diversity: Medium shot at ~45°; modern indoor setting; soft natural window light; warm palette; emphasize human-product interaction; maintain specified negative-space location.',
+    // Variant B: wide environmental, dynamic angle, golden hour outdoor
+    'Diversity: Wide environmental shot; slight low-angle for dynamism; outdoor urban scene at golden hour; cool-warm mixed palette; preserve copy-safe area per concept.',
+    // Variant C: close-up detail with human touch, studio rim light
+    'Diversity: Close-up detail with human hands; overhead/top-down variation; crisp studio lighting with subtle rim; neutral palette; keep product textures realistic and copy area clean.',
+  ];
+  return variants[index % variants.length];
+}
+
+export async function generateOne({ title, description, additionalInfo = '', img = null, limit = 1, variantIndex = null }) {
   const hasInputImage = Boolean(img?.mimeType && img?.base64);
   const prompt = buildGenerationPrompt(
     { title, description },
     additionalInfo,
-    { hasInputImage }
+    { hasInputImage, variantDirective: Number.isInteger(variantIndex) ? getVariantDirective(variantIndex) : '' }
   );
   const contents = [{ text: prompt }];
   if (hasInputImage) {
@@ -93,6 +105,36 @@ export async function generateOne({ title, description, additionalInfo = '', img
   return out;
 }
 
+async function runWithConcurrency(items, worker, limit = 3) {
+  const results = new Array(items.length);
+  let idx = 0;
+  const n = Math.min(limit, items.length);
+  const workers = Array.from({ length: n }, async () => {
+    while (true) {
+      const i = idx++;
+      if (i >= items.length) break;
+      const item = items[i];
+      results[i] = await worker(item, i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+export async function generateVariants({ title, description, additionalInfo = '', img = null, count = 3, concurrency = 3 }) {
+  const n = Math.max(1, Math.min(3, Number(count) || 1));
+  const tasks = Array.from({ length: n }, (_, i) => ({ variantIndex: i }));
+  const results = await runWithConcurrency(
+    tasks,
+    async t => {
+      const imgs = await generateOne({ title, description, additionalInfo, img, limit: 1, variantIndex: t.variantIndex });
+      return imgs[0] || null;
+    },
+    Math.max(1, Math.min(3, Number(concurrency) || 3))
+  );
+  return results.filter(Boolean);
+}
+
 export async function handleGenerate(req, res) {
   const contentType = (req.headers['content-type'] || '').split(';')[0];
   if (contentType !== 'application/json') {
@@ -106,6 +148,8 @@ export async function handleGenerate(req, res) {
     const title = String(body?.title || '').trim();
     const description = String(body?.description || '').trim();
     const additionalInfo = String(body?.additionalInfo || '').trim();
+    const count = Number(body?.count) || 1;
+    const variantIndex = Number.isInteger(body?.variantIndex) ? Number(body.variantIndex) : null;
     const img = body?.image && typeof body.image === 'object' ? body.image : null;
     if (!title || !description) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -113,7 +157,12 @@ export async function handleGenerate(req, res) {
       return;
     }
 
-    const images = await generateOne({ title, description, additionalInfo, img, limit: 1 });
+    let images;
+    if ((Number(count) || 1) > 1) {
+      images = await generateVariants({ title, description, additionalInfo, img, count: Math.min(3, count), concurrency: 3 });
+    } else {
+      images = await generateOne({ title, description, additionalInfo, img, limit: 1, variantIndex });
+    }
 
     if (!images.length) {
       res.writeHead(502, { 'Content-Type': 'application/json' });

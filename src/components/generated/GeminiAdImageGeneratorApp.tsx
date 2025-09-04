@@ -5,6 +5,7 @@ import { AdditionalInfoTextarea } from './AdditionalInfoTextarea';
 import { GeneratedIdeasGrid } from './GeneratedIdeasGrid';
 import { HighResImageModal } from './HighResImageModal';
 import { analyzeImage, generateImage } from '@/lib/api';
+import { Sparkles } from 'lucide-react';
 interface GeneratedIdea {
   id: string;
   title: string;
@@ -71,20 +72,35 @@ export const GeminiAdImageGeneratorApp = () => {
       // Show ideas immediately
       setIsGenerating(false);
 
-      // Generate one image per idea in parallel; progressively update UI as each finishes
-      mapped.forEach(async idea => {
-        if (controller.signal.aborted) return;
-        try {
-          const img = await generateImage(
-            { title: idea.title, description: idea.description },
-            uploadedImage,
-            additionalInfo,
-            { signal: controller.signal }
-          );
-          setGeneratedIdeas(prev => prev.map(it => (it.id === idea.id ? { ...it, images: [img] } : it)));
-        } catch (e) {
-          // Ignore individual failures to avoid blocking others
-        }
+      // Generate three diverse images per idea in parallel; update each as it completes
+      mapped.forEach(idea => {
+        [0, 1, 2].forEach(async variantIndex => {
+          if (controller.signal.aborted) return;
+          try {
+            const img = await generateImage(
+              { title: idea.title, description: idea.description },
+              uploadedImage,
+              additionalInfo,
+              { signal: controller.signal, variantIndex }
+            );
+            setGeneratedIdeas(prev =>
+              prev.map(it =>
+                it.id === idea.id
+                  ? {
+                      ...it,
+                      images: (() => {
+                        const arr = it.images ? [...it.images] : [];
+                        arr[variantIndex] = img; // place by variant index for stable order
+                        return arr.filter(Boolean);
+                      })(),
+                    }
+                  : it
+              )
+            );
+          } catch (e) {
+            // Ignore individual failures; others continue
+          }
+        });
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
@@ -121,11 +137,16 @@ export const GeminiAdImageGeneratorApp = () => {
         opacity: 1,
         y: 0
       }} className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            <span>Gemini AI Ad Generator</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            <span>Upload your product image and let AI generate compelling advertising campaigns with multiple creative variations</span>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold text-foreground">
+              <span>AI Campaign Generator</span>
+            </h1>
+          </div>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            <span>Upload your product image to generate multiple AI-powered advertising campaigns with compelling visuals and copy</span>
           </p>
         </motion.header>
 

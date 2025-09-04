@@ -47,7 +47,7 @@ export function buildGenerationPrompt(idea, additionalInfo = '', opts = {}) {
   const title = idea?.title || '';
   const desc = idea?.description || '';
   const concise = extractImagePrompt(desc);
-  const { hasInputImage = false } = opts || {};
+  const { hasInputImage = false, variantDirective = '' } = opts || {};
   const extra = additionalInfo?.trim()
     ? `\nAdditional Input (OVERRIDES; highest priority): ${additionalInfo.trim()}`
     : '';
@@ -63,6 +63,7 @@ export function buildGenerationPrompt(idea, additionalInfo = '', opts = {}) {
     'Concept (art direction; sections are pipe-delimited " | "):',
     desc,
     concise ? `Primary rendering directive: ${concise}` : '',
+    variantDirective ? `Variant directive: ${variantDirective}` : '',
     // Key constraints (compact and explicit)
     'Constraints: include humans using/enjoying the product; no sterile packshots. Reserve 20–35% clean negative space for copy (no overlaid text). Respect the specified negative-space location; keep product prominent and undistorted. No invented product features or third-party logos; no watermarks.',
     'Framing: primary aspect 4:5. When adapting to 16:9 or 9:16, crop/shift angle while preserving the copy-safe area and subject integrity.',

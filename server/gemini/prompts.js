@@ -43,21 +43,30 @@ function extractImagePrompt(description) {
   return last.replace(/^.*?:\s*/, '').trim();
 }
 
-export function buildGenerationPrompt(idea, additionalInfo = '') {
+export function buildGenerationPrompt(idea, additionalInfo = '', opts = {}) {
   const title = idea?.title || '';
   const desc = idea?.description || '';
   const concise = extractImagePrompt(desc);
+  const { hasInputImage = false } = opts || {};
   const extra = additionalInfo?.trim()
-    ? `\nAdditional Input (OVERRIDES): ${additionalInfo.trim()}`
+    ? `\nAdditional Input (OVERRIDES; highest priority): ${additionalInfo.trim()}`
     : '';
+
   return [
-    'Create a production-grade advertising image for the campaign below. Interpret the labeled sections in the concept description; sections use " | ". If an "Image Generation Prompt" is provided, treat it as the primary rendering directive. Adhere strictly to Additional Input overrides.',
-    `Campaign title: ${title}`,
-    `Concept description (for art direction): ${desc}`,
-    concise ? `Rendering directive (concise): ${concise}` : '',
-    'Hard constraints: include humans using/enjoying the product (no sterile packshots). Reserve 20–35% clean negative space for copy; no embedded text or watermarks. Respect the specified negative space location and preserve product scale when adapting to 16:9 or 9:16. Do not invent product features or third-party logos.',
-    'Framing: prioritize 4:5 as primary; adapt to 16:9/9:16 via crop/angle while maintaining the copy-safe area.',
-    'Lighting & look: follow the lighting and colour/mood cues; maintain realism and natural skin tones.',
+    // Task + input mode
+    'Task: Produce a photorealistic advertising image. Output an image, not text.',
+    hasInputImage
+      ? 'Input mode: An input image is provided. Treat it as a reference for editing/extension. Preserve product identity, materials, and scene continuity. Remove any text/watermarks. Extend or refine the scene to fulfill the directive.'
+      : 'Input mode: No reference image. Generate from scratch while staying faithful to the concept description and directive.',
+    // Campaign + concept
+    `Campaign: ${title}`,
+    'Concept (art direction; sections are pipe-delimited " | "):',
+    desc,
+    concise ? `Primary rendering directive: ${concise}` : '',
+    // Key constraints (compact and explicit)
+    'Constraints: include humans using/enjoying the product; no sterile packshots. Reserve 20–35% clean negative space for copy (no overlaid text). Respect the specified negative-space location; keep product prominent and undistorted. No invented product features or third-party logos; no watermarks.',
+    'Framing: primary aspect 4:5. When adapting to 16:9 or 9:16, crop/shift angle while preserving the copy-safe area and subject integrity.',
+    'Look: follow lighting/mood/palette cues from the concept; maintain realism and natural skin tones; plausible anatomy and hands; realistic materials and reflections.',
     extra,
   ]
     .filter(Boolean)

@@ -49,7 +49,12 @@ export async function handleGenerate(req, res) {
       return;
     }
 
-    const prompt = buildGenerationPrompt({ title, description }, additionalInfo);
+    const hasInputImage = Boolean(img?.mimeType && img?.base64);
+    const prompt = buildGenerationPrompt(
+      { title, description },
+      additionalInfo,
+      { hasInputImage }
+    );
     const contents = [{ text: prompt }];
     if (img?.mimeType && img?.base64) {
       contents.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });

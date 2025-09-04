@@ -72,7 +72,13 @@ export const ImageUploadBox = ({
       scale: 1
     }} className="relative group">
           <div className="relative bg-card border border-border rounded-lg overflow-hidden">
-            <img src={previewUrl} alt="Uploaded product preview" className="w-full h-64 object-cover" />
+            <div className="w-full max-h-[420px] bg-muted/40 flex items-center justify-center">
+              <img
+                src={previewUrl}
+                alt="Uploaded product preview"
+                className="w-full h-auto max-h-[420px] object-contain"
+              />
+            </div>
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200" />
             <motion.button whileHover={{
           scale: 1.1

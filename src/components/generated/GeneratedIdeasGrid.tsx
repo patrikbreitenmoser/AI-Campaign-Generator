@@ -250,8 +250,8 @@ export const GeneratedIdeasGrid = ({
             scale: 1.02
           }} className="group cursor-pointer" onClick={() => onImageClick(image, idea.title)}>
                     <div className="relative bg-card border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-                      <div className="aspect-[4/3] overflow-hidden">
-                        <img src={image.url} alt={image.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+                        <img src={image.url} alt={image.alt} className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-100" />
                       </div>
                       
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200" />

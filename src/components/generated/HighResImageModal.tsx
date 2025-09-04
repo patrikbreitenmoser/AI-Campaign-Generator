@@ -77,7 +77,7 @@ export const HighResImageModal = ({
         damping: 25,
         stiffness: 300
       }} className="relative max-w-6xl max-h-[90vh] w-full bg-background rounded-lg overflow-hidden shadow-2xl">
-          <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-background/90 to-transparent p-4">
+          <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-background/90 to-transparent p-4 pointer-events-none">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h2 className="text-lg font-semibold text-foreground">
@@ -88,7 +88,7 @@ export const HighResImageModal = ({
                 </p>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pointer-events-auto">
                 <motion.button whileHover={{
                 scale: 1.05
               }} whileTap={{
@@ -108,8 +108,8 @@ export const HighResImageModal = ({
             </div>
           </div>
 
-          <div className="relative w-full h-full min-h-[400px] max-h-[80vh] overflow-hidden">
-            <img src={image.url} alt={image.alt} className="w-full h-full object-contain" />
+          <div className="relative w-full min-h-[400px] max-h-[80vh] overflow-auto pt-16 pb-12 flex items-center justify-center">
+            <img src={image.url} alt={image.alt} className="max-w-full max-h-full object-contain" />
             
             <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm px-3 py-2 rounded-full">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">

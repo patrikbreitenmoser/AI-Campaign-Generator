@@ -72,11 +72,11 @@ export const ImageUploadBox = ({
       scale: 1
     }} className="relative group">
           <div className="relative bg-card border border-border rounded-lg overflow-hidden">
-            <div className="w-full max-h-[420px] bg-muted/40 flex items-center justify-center">
+            <div className="w-full max-h-[320px] bg-muted/40 flex items-center justify-center">
               <img
                 src={previewUrl}
                 alt="Uploaded product preview"
-                className="w-full h-auto max-h-[420px] object-contain"
+                className="w-full h-auto max-h-[320px] object-contain"
               />
             </div>
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200" />

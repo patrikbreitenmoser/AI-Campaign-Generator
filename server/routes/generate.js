@@ -32,11 +32,11 @@ function readJson(req, limitBytes = 8 * 1024 * 1024) {
 function getVariantDirective(index = 0) {
   const variants = [
     // Variant A: medium shot, soft natural light, modern indoor
-    'Diversity: Medium shot at ~45°; modern indoor setting; soft natural window light; warm palette; emphasize human-product interaction; maintain specified negative-space location.',
+    'Diversity: Medium shot at ~45°; modern indoor setting; soft natural window light; warm palette; emphasize human-product interaction; keep the product fully in frame, unobstructed, and hero-visible; maintain specified negative-space location.',
     // Variant B: wide environmental, dynamic angle, golden hour outdoor
-    'Diversity: Wide environmental shot; slight low-angle for dynamism; outdoor urban scene at golden hour; cool-warm mixed palette; preserve copy-safe area per concept.',
+    'Diversity: Wide environmental shot; slight low-angle for dynamism; outdoor urban scene at golden hour; cool-warm mixed palette; keep the product fully in frame, unobstructed, and hero-visible; preserve copy-safe area per concept.',
     // Variant C: close-up detail with human touch, studio rim light
-    'Diversity: Close-up detail with human hands; overhead/top-down variation; crisp studio lighting with subtle rim; neutral palette; keep product textures realistic and copy area clean.',
+    'Diversity: Close-up detail with human hands; overhead/top-down variation; crisp studio lighting with subtle rim; neutral palette; keep the product fully in frame, unobstructed, and hero-visible; keep product textures realistic and copy area clean.',
   ];
   return variants[index % variants.length];
 }
@@ -79,22 +79,19 @@ export async function generateOne({ title, description, additionalInfo = '', img
     return imgs;
   }
 
-  const mimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
   const baseDelays = [0, 300, 800];
   let images = [];
-  for (const mime of mimeTypes) {
-    for (let attempt = 0; attempt < baseDelays.length; attempt++) {
-      try {
-        const jitter = Math.floor(Math.random() * 120);
-        const wait = baseDelays[attempt] + jitter;
-        if (wait > 0) await new Promise(r => setTimeout(r, wait));
-        images = await callModelOnce(mime);
-        if (images.length) break;
-      } catch (_) {
-        // continue to next attempt
-      }
+  // Single response format (PNG) with light backoff retries
+  for (let attempt = 0; attempt < baseDelays.length; attempt++) {
+    try {
+      const jitter = Math.floor(Math.random() * 120);
+      const wait = baseDelays[attempt] + jitter;
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+      images = await callModelOnce('image/png');
+      if (images.length) break;
+    } catch (_) {
+      // continue to next attempt
     }
-    if (images.length) break;
   }
 
   const out = images.slice(0, Math.max(1, limit)).map((m, idx) => ({

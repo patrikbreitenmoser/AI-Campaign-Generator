@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ImageUploadBox } from './ImageUploadBox';
 import { AdditionalInfoTextarea } from './AdditionalInfoTextarea';
-import { GeneratedIdeasGrid } from './GeneratedIdeasGrid';
+import { IdeasGrid } from '@/components/IdeasGrid';
 import { HighResImageModal } from './HighResImageModal';
 import { analyzeImage, generateImage } from '@/lib/api';
 import { Sparkles } from 'lucide-react';
@@ -90,8 +90,9 @@ export const GeminiAdImageGeneratorApp = () => {
                       ...it,
                       images: (() => {
                         const arr = it.images ? [...it.images] : [];
-                        arr[variantIndex] = img; // place by variant index for stable order
-                        return arr.filter(Boolean);
+                        // place by variant index for stable order; keep sparse slots to avoid reindexing
+                        arr[variantIndex] = img;
+                        return arr;
                       })(),
                     }
                   : it
@@ -216,7 +217,7 @@ export const GeminiAdImageGeneratorApp = () => {
                 <span>Generated Campaigns</span>
               </h2>
               
-              <GeneratedIdeasGrid ideas={generatedIdeas} isLoading={isGenerating} onImageClick={handleImageClick} />
+              <IdeasGrid ideas={generatedIdeas} isLoading={isGenerating} onImageClick={handleImageClick} additionalInfo={additionalInfo} />
             </div>
           </motion.section>
         </div>
